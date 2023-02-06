@@ -60,6 +60,8 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		return errors.New("unsupported chain")
 	}
 
 	cacheName := fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)

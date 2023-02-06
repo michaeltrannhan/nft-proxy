@@ -9,6 +9,7 @@ require (
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/joho/godotenv v1.3.0
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b
 	gorm.io/driver/sqlite v1.4.4
 	gorm.io/gorm v1.24.5
@@ -45,7 +46,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 // indirect
 	github.com/tidwall/gjson v1.9.3 // indirect

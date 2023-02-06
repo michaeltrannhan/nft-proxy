@@ -6,6 +6,8 @@ import (
 	"github.com/babilu-online/common/context"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 )
@@ -26,6 +28,8 @@ type HttpService struct {
 
 	imgSvc  *ImageService
 	statSvc *StatService
+
+	defaultImage []byte
 }
 
 var ErrUnauthorized = errors.New("unauthorized")
@@ -44,12 +48,18 @@ func (svc *HttpService) Configure(ctx *context.Context) error {
 
 	svc.Port = portFlag
 
+	svc.defaultImage, err = ioutil.ReadFile("./docs/failed_image.jpg")
+	if err != nil {
+		return err
+	}
+
 	return svc.DefaultService.Configure(ctx)
 }
 
 func (svc *HttpService) Start() error {
 	svc.imgSvc = svc.Service(IMG_SVC).(*ImageService)
 	svc.statSvc = svc.Service(STAT_SVC).(*StatService)
+
 	r := gin.Default()
 
 	r.Use(gin.Recovery())
@@ -143,7 +153,7 @@ func (svc *HttpService) showNFTImage(c *gin.Context) {
 		svc.mediaError(c, err)
 		return
 	}
-	svc.statSvc.IncrementFileRequests()
+	svc.statSvc.IncrementImageFileRequests()
 }
 
 //
@@ -157,6 +167,7 @@ func (svc *HttpService) showNFTMedia(c *gin.Context) {
 		svc.mediaError(c, err)
 		return
 	}
+	svc.statSvc.IncrementMediaFileRequests()
 }
 
 func (svc *HttpService) paramErr(c *gin.Context, err error) {
@@ -173,7 +184,11 @@ func (svc *HttpService) httpError(c *gin.Context, err error) {
 
 //TODO Replace with placeholder image
 func (svc *HttpService) mediaError(c *gin.Context, err error) {
-	c.JSON(200, gin.H{
-		"error": err.Error(),
-	})
+	log.Printf("Media Err: %s", err)
+
+	c.Header("Cache-Control", "public, max=age=10000") //Stop flooding
+	c.Data(200, "image/jpeg", svc.defaultImage)
+	//c.JSON(200, gin.H{
+	//	"error": err.Error(),
+	//})
 }

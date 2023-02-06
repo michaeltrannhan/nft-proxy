@@ -8,8 +8,9 @@ import (
 type StatService struct {
 	context.DefaultService
 
-	filesServed    uint64
-	requestsServed uint64
+	imageFilesServed uint64
+	mediaFilesServed uint64
+	requestsServed   uint64
 
 	sql *SqliteService
 }
@@ -26,8 +27,12 @@ func (svc *StatService) Start() error {
 	return nil
 }
 
-func (svc *StatService) IncrementFileRequests() {
-	svc.filesServed++
+func (svc *StatService) IncrementImageFileRequests() {
+	svc.imageFilesServed++
+}
+
+func (svc *StatService) IncrementMediaFileRequests() {
+	svc.mediaFilesServed++
 }
 
 func (svc *StatService) IncrementMediaRequests() {
@@ -39,8 +44,9 @@ func (svc *StatService) ServiceStats() (map[string]interface{}, error) {
 	svc.sql.Db().Model(&nft_proxy.SolanaMedia{}).Count(&imgCount)
 
 	return map[string]interface{}{
-		"images_stored":   imgCount,
-		"files_served":    svc.filesServed,
-		"requests_served": svc.requestsServed,
+		"images_stored":      imgCount,
+		"requests_served":    svc.requestsServed,
+		"image_files_served": svc.imageFilesServed,
+		"media_files_served": svc.mediaFilesServed,
 	}, nil
 }

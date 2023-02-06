@@ -2,18 +2,17 @@ package services
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"github.com/babilu-online/common/context"
 	"github.com/nfnt/resize"
 	"golang.org/x/image/draw"
 	"image"
 	"image/color/palette"
 	"image/gif"
+	"log"
 
-	_ "image/gif"
+	_ "golang.org/x/image/vp8"
+	_ "golang.org/x/image/webp"
 	"image/jpeg"
-	_ "image/jpeg"
 	"image/png"
 	"io"
 )
@@ -57,9 +56,10 @@ func (svc *ResizeService) Resize(data []byte, out io.Writer, size int) error {
 		return jpeg.Encode(out, dst, &jpeg.Options{Quality: 100})
 	case "jpg":
 		return jpeg.Encode(out, dst, &jpeg.Options{Quality: 100})
+	default:
+		log.Printf("Unsupported media type (%s) encoding as jpeg", typ)
+		return jpeg.Encode(out, dst, &jpeg.Options{Quality: 100})
 	}
-
-	return errors.New(fmt.Sprintf("unsupported media type: %s", typ))
 }
 
 func (svc *ResizeService) resizeGif(data []byte, width, height int) (*gif.GIF, error) {

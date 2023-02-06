@@ -52,8 +52,8 @@ type NFTCollectionSimple struct {
 }
 
 type NFTCreatorSimple struct {
-	Address  string `json:"address"`
-	Verified bool   `json:"verified"`
+	Address string `json:"address"`
+	//Verified bool   `json:"verified"`
 }
 
 type NFTAttributeSimple struct {
