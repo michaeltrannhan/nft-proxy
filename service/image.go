@@ -64,8 +64,13 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 
 	cacheName := fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
 	ifo, err := os.Stat(cacheName)
+	modTime := time.Now()
+	if ifo != nil {
+		modTime = ifo.ModTime()
+	}
 
 	if err != nil || ifo.Size() == 0 { //Missing cached image
+		modTime = time.Now()
 		err := svc.fetchMissingImage(media, cacheName)
 		if err != nil {
 			return err
@@ -78,6 +83,9 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 		return err
 	}
 
+	c.Header("Cache-Control", "public, max=age=15552000")
+	c.Header("Vary", "Accept-Encoding")
+	c.Header("Last-Modified", modTime.Format("Mon, 02 Jan 2006 15:04:05 GMT")) //Mon, 03 Jun 2020 11:35:28 GMT
 	c.Data(200, fmt.Sprintf("image/%s", media.ImageType), resizedData)
 	return nil
 }

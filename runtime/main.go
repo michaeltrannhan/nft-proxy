@@ -16,6 +16,7 @@ func main() {
 
 	ctx, err := context.NewCtx(
 		&services.SqliteService{},
+		&services.StatService{},
 		&services.ResizeService{},
 		&services.SolanaService{},
 		&services.SolanaImageService{},

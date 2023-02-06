@@ -3,17 +3,17 @@ package nft_proxy
 import "strings"
 
 type NFTMetadataSimple struct {
-	Name                 string               `json:"name"`
-	Symbol               string               `json:"symbol"`
-	Description          string               `json:"description"`
-	SellerFeeBasisPoints float64              `json:"seller_fee_basis_points"`
-	Image                string               `json:"image"`
-	AnimationURL         string               `json:"animation_url"`
-	ExternalURL          string               `json:"external_url"`
-	Collection           NFTCollectionSimple  `json:"collection"`
-	Properties           NFTPropertiesSimple  `json:"properties"`
-	Attributes           []NFTAttributeSimple `json:"attributes"`
-	Files                []NFTFiles           `json:"files"`
+	Name   string `json:"name"`
+	Symbol string `json:"symbol"`
+	//Description          string               `json:"description"`
+	//SellerFeeBasisPoints float64              `json:"seller_fee_basis_points"`
+	Image        string              `json:"image"`
+	AnimationURL string              `json:"animation_url"`
+	ExternalURL  string              `json:"external_url"`
+	Collection   NFTCollectionSimple `json:"collection"`
+	Properties   NFTPropertiesSimple `json:"properties"`
+	//Attributes           []NFTAttributeSimple `json:"attributes"`
+	Files []NFTFiles `json:"files"`
 }
 
 func (m *NFTMetadataSimple) AnimationFile() *NFTFiles {
@@ -52,7 +52,8 @@ type NFTCollectionSimple struct {
 }
 
 type NFTCreatorSimple struct {
-	Address string `json:"address"`
+	Address  string `json:"address"`
+	Verified bool   `json:"verified"`
 }
 
 type NFTAttributeSimple struct {

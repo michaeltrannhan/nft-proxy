@@ -24,7 +24,8 @@ type HttpService struct {
 	BaseURL string
 	Port    int
 
-	imgSvc *ImageService
+	imgSvc  *ImageService
+	statSvc *StatService
 }
 
 var ErrUnauthorized = errors.New("unauthorized")
@@ -48,6 +49,7 @@ func (svc *HttpService) Configure(ctx *context.Context) error {
 
 func (svc *HttpService) Start() error {
 	svc.imgSvc = svc.Service(IMG_SVC).(*ImageService)
+	svc.statSvc = svc.Service(STAT_SVC).(*StatService)
 	r := gin.Default()
 
 	r.Use(gin.Recovery())
@@ -63,6 +65,7 @@ func (svc *HttpService) Start() error {
 
 	//Validation endpoints
 	r.GET("/ping", svc.ping)
+	r.GET("/stats", svc.stats)
 
 	v1 := r.Group("/v1")
 	//docs.SwaggerInfo.BasePath = "/v1"
@@ -101,6 +104,21 @@ func (svc *HttpService) ping(c *gin.Context) {
 // @Summary Ping liquify service
 // @Accept  json
 // @Produce json
+// @Router /stats [get]
+func (svc *HttpService) stats(c *gin.Context) {
+	stats, err := svc.statSvc.ServiceStats()
+	if err != nil {
+		svc.httpError(c, err)
+		return
+	}
+
+	c.JSON(200, stats)
+}
+
+//
+// @Summary Ping liquify service
+// @Accept  json
+// @Produce json
 // @Router /nfts/{id} [get]
 func (svc *HttpService) showNFT(c *gin.Context) {
 
@@ -111,6 +129,7 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 	}
 
 	c.JSON(200, media)
+	svc.statSvc.IncrementMediaRequests()
 }
 
 //
@@ -124,6 +143,7 @@ func (svc *HttpService) showNFTImage(c *gin.Context) {
 		svc.mediaError(c, err)
 		return
 	}
+	svc.statSvc.IncrementFileRequests()
 }
 
 //

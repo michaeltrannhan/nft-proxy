@@ -39,7 +39,7 @@ func (svc *ResizeService) Resize(data []byte, out io.Writer, size int) error {
 	}
 
 	if typ == "gif" {
-		g2, err := svc.resizeGif(data, size/2, size/2)
+		g2, err := svc.resizeGif(data, 0, size/2)
 		if err != nil {
 			return err
 		}
@@ -48,12 +48,13 @@ func (svc *ResizeService) Resize(data []byte, out io.Writer, size int) error {
 	}
 
 	// Resize:
-	dst := resize.Resize(uint(size), uint(size), src, resize.MitchellNetravali)
+	dst := resize.Resize(0, uint(size), src, resize.MitchellNetravali)
 
 	switch typ {
 	case "png":
 		return png.Encode(out, dst)
 	case "jpeg":
+		return jpeg.Encode(out, dst, &jpeg.Options{Quality: 100})
 	case "jpg":
 		return jpeg.Encode(out, dst, &jpeg.Options{Quality: 100})
 	}

@@ -78,7 +78,7 @@ func (svc *SolanaImageService) retrieve(key string) (*nft_proxy.NFTMetadataSimpl
 }
 
 func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataSimple, error) {
-	log.Printf("SolanaImageService::retrieveFile: %s", uri)
+	//log.Printf("SolanaImageService::retrieveFile: %s", uri)
 	file, err := svc.http.Get(strings.Trim(uri, "\x00")) //Strip crap off urls
 	if err != nil {
 		return nil, err
@@ -105,22 +105,7 @@ func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataS
 }
 
 func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadataSimple, localPath string) (*nft_proxy.SolanaMedia, error) {
-	imageType := ""
-	imgFile := metadata.ImageFile()
-	if imgFile != nil && strings.Contains(imgFile.Type, "/") {
-		imageType = strings.Split(imgFile.Type, "/")[1]
-	}
-	if imageType == "" {
-		parts := strings.Split(metadata.Image, ".")
-		lastPart := parts[len(parts)-1]
-		if strings.Contains(lastPart, "=") {
-			parts := strings.Split(lastPart, "=")
-			imageType = parts[len(parts)-1]
-		} else {
-			imageType = lastPart
-		}
-	}
-
+	imageType := svc.guessImageType(metadata)
 	media := nft_proxy.SolanaMedia{
 		Mint:      key,
 		ImageUri:  metadata.Image,
@@ -138,4 +123,46 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 	}
 
 	return &media, svc.sql.Db().Clauses(clause.OnConflict{DoNothing: true}).Create(&media).Error
+}
+
+func (svc *SolanaImageService) guessImageType(metadata *nft_proxy.NFTMetadataSimple) string {
+	imageType := ""
+	imgFile := metadata.ImageFile()
+	if imgFile != nil && strings.Contains(imgFile.Type, "/") {
+		imageType = strings.Split(imgFile.Type, "/")[1]
+	}
+	if imageType == "" {
+		parts := strings.Split(metadata.Image, ".")
+		lastPart := parts[len(parts)-1]
+		if strings.Contains(lastPart, "=") {
+			parts := strings.Split(lastPart, "=")
+			imageType = parts[len(parts)-1]
+		} else {
+			imageType = lastPart
+		}
+	}
+
+	if !svc.ValidType(imageType) {
+		log.Printf("Invalid image type guessed: %s", imageType)
+		return "jpg"
+	}
+
+	return imageType
+}
+
+func (svc *SolanaImageService) ValidType(imageType string) bool {
+	switch imageType {
+	case "png":
+		return true
+	case "jpg":
+		return true
+	case "jpeg":
+		return true
+	case "gif":
+		return true
+	case "svg":
+		return true
+	default:
+		return false
+	}
 }
