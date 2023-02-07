@@ -93,6 +93,10 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 }
 
 func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName string) error {
+	if media.ImageUri == "" {
+		return errors.New("invalid image")
+	}
+
 	resp, err := svc.httpMedia.Get(media.ImageUri)
 	if err != nil {
 		return err

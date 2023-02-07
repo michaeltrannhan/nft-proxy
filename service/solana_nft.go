@@ -68,9 +68,9 @@ func (svc *SolanaImageService) retrieve(key string) (*nft_proxy.NFTMetadataSimpl
 	if err != nil {
 		return nil, err
 	}
-
 	tokenData, err := svc.sol.TokenData(pk)
 	if err != nil {
+		log.Printf("No token data")
 		return nil, err
 	}
 
@@ -78,13 +78,11 @@ func (svc *SolanaImageService) retrieve(key string) (*nft_proxy.NFTMetadataSimpl
 }
 
 func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataSimple, error) {
-	//log.Printf("SolanaImageService::retrieveFile: %s", uri)
 	file, err := svc.http.Get(strings.Trim(uri, "\x00")) //Strip crap off urls
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("File: %v", file.StatusCode)
 	if file.StatusCode != 200 {
 		return nil, err
 	}
@@ -105,20 +103,22 @@ func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataS
 }
 
 func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadataSimple, localPath string) (*nft_proxy.SolanaMedia, error) {
-	imageType := svc.guessImageType(metadata)
 	media := nft_proxy.SolanaMedia{
 		Mint:      key,
-		ImageUri:  metadata.Image,
-		ImageType: imageType,
 		LocalPath: localPath,
 	}
 
-	mediaFile := metadata.AnimationFile()
-	if mediaFile != nil {
-		media.MediaUri = mediaFile.URL
-		mediaFile.Type = "mp4"
-		if strings.Contains(mediaFile.Type, "/") {
-			media.MediaType = strings.Split(mediaFile.Type, "/")[1]
+	if metadata != nil {
+		media.ImageUri = metadata.Image
+		media.ImageType = svc.guessImageType(metadata)
+
+		mediaFile := metadata.AnimationFile()
+		if mediaFile != nil {
+			media.MediaUri = mediaFile.URL
+			mediaFile.Type = "mp4"
+			if strings.Contains(mediaFile.Type, "/") {
+				media.MediaType = strings.Split(mediaFile.Type, "/")[1]
+			}
 		}
 	}
 
@@ -126,6 +126,10 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 }
 
 func (svc *SolanaImageService) guessImageType(metadata *nft_proxy.NFTMetadataSimple) string {
+	if metadata == nil {
+		return "jpg"
+	}
+
 	imageType := ""
 	imgFile := metadata.ImageFile()
 	if imgFile != nil && strings.Contains(imgFile.Type, "/") {
