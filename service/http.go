@@ -99,7 +99,6 @@ type Pong struct {
 	Message string `json:"message"`
 }
 
-//
 // @Summary Ping liquify service
 // @Accept  json
 // @Produce json
@@ -110,7 +109,6 @@ func (svc *HttpService) ping(c *gin.Context) {
 	})
 }
 
-//
 // @Summary Ping liquify service
 // @Accept  json
 // @Produce json
@@ -125,7 +123,6 @@ func (svc *HttpService) stats(c *gin.Context) {
 	c.JSON(200, stats)
 }
 
-//
 // @Summary Ping liquify service
 // @Accept  json
 // @Produce json
@@ -142,7 +139,6 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 	svc.statSvc.IncrementMediaRequests()
 }
 
-//
 // @Summary Ping liquify service
 // @Accept  json
 // @Produce json
@@ -156,7 +152,6 @@ func (svc *HttpService) showNFTImage(c *gin.Context) {
 	svc.statSvc.IncrementImageFileRequests()
 }
 
-//
 // @Summary Ping liquify service
 // @Accept  json
 // @Produce json
@@ -182,7 +177,7 @@ func (svc *HttpService) httpError(c *gin.Context, err error) {
 	})
 }
 
-//TODO Replace with placeholder image
+// TODO Replace with placeholder image
 func (svc *HttpService) mediaError(c *gin.Context, err error) {
 	log.Printf("Media Err: %s", err)
 
