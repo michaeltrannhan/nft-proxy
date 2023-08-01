@@ -74,7 +74,17 @@ func (svc *SolanaImageService) retrieve(key string) (*nft_proxy.NFTMetadataSimpl
 		return nil, err
 	}
 
-	return svc.retrieveFile(tokenData.Data.Uri)
+	//Get file meta if possible
+	f, err := svc.retrieveFile(tokenData.Data.Uri)
+	if err == nil {
+		return f, nil
+	}
+
+	//No Metadata
+	return &nft_proxy.NFTMetadataSimple{
+		Name:   strings.Trim(tokenData.Data.Name, "\x00"),
+		Symbol: strings.Trim(tokenData.Data.Symbol, "\x00"),
+	}, nil
 }
 
 func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataSimple, error) {
