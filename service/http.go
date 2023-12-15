@@ -8,8 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 // @title NFT Aggregator Swap API
@@ -116,7 +118,7 @@ func (svc *HttpService) ping(c *gin.Context) {
 func (svc *HttpService) stats(c *gin.Context) {
 	stats, err := svc.statSvc.ServiceStats()
 	if err != nil {
-		svc.httpError(c, err)
+		svc.paramErr(c, err)
 		return
 	}
 
@@ -140,6 +142,9 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 		svc.paramErr(c, err)
 		return
 	}
+
+	c.Header("Cache-Control", "public, max-age=31536000")
+	c.Header("Expires", time.Now().AddDate(0, 1, 0).Format(http.TimeFormat))
 
 	c.JSON(200, media)
 	svc.statSvc.IncrementMediaRequests()
@@ -173,12 +178,6 @@ func (svc *HttpService) showNFTMedia(c *gin.Context) {
 
 func (svc *HttpService) paramErr(c *gin.Context, err error) {
 	c.JSON(400, gin.H{
-		"error": err.Error(),
-	})
-}
-
-func (svc *HttpService) httpError(c *gin.Context, err error) {
-	c.JSON(500, gin.H{
 		"error": err.Error(),
 	})
 }

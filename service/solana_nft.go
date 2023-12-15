@@ -118,12 +118,12 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 	media := nft_proxy.SolanaMedia{
 		Mint:      key,
 		LocalPath: localPath,
-		Name:      metadata.Name,
-		Symbol:    metadata.Symbol,
 	}
 
 	log.Printf("Metadata: %+v\n", metadata)
 	if metadata != nil {
+		media.Name = metadata.Name
+		media.Symbol = metadata.Symbol
 		media.ImageUri = metadata.Image
 		media.ImageType = svc.guessImageType(metadata)
 

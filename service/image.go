@@ -141,6 +141,8 @@ func (svc *ImageService) MediaFile(c *gin.Context, key string) error {
 	}
 
 	//Write our data
+	c.Header("Cache-Control", "public, max-age=31536000")
+	c.Header("Expires", time.Now().AddDate(0, 1, 0).Format(http.TimeFormat))
 	c.Header("Content-Type", media.MediaType)
 	err = resp.Write(c.Writer)
 	if err != nil {
