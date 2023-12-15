@@ -4,6 +4,7 @@ import (
 	ctx "context"
 	"errors"
 	"github.com/babilu-online/common/context"
+	bin "github.com/gagliardetto/binary"
 	token_metadata "github.com/gagliardetto/metaplex-go/clients/token-metadata"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
@@ -44,14 +45,26 @@ func (svc *SolanaService) RecentBlockhash() (solana.Hash, error) {
 func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metadata, error) {
 	var meta token_metadata.Metadata
 
-	ata, _, err := solana.FindTokenMetadataAddress(key)
+	ata, _, _ := svc.FindTokenMetadataAddress(key, solana.TokenMetadataProgramID)
+	ataT22, _, _ := svc.FindTokenMetadataAddress(key, solana.MustPublicKeyFromBase58("META4s4fSmpkTbZoUsgC1oBnWB31vQcmnN8giPw51Zu"))
+
+	accs, err := svc.client.GetMultipleAccountsWithOpts(ctx.TODO(), []solana.PublicKey{
+		ata,
+		ataT22,
+	}, &rpc.GetMultipleAccountsOpts{Commitment: rpc.CommitmentProcessed})
 	if err != nil {
 		return nil, err
 	}
 
-	err = svc.Client().GetAccountDataBorshInto(ctx.TODO(), ata, &meta)
-	if err != nil {
-		return nil, err
+	for _, acc := range accs.Value {
+		if acc == nil {
+			continue
+		}
+
+		err := bin.NewBorshDecoder(acc.Data.GetBinary()).Decode(&meta)
+		if err != nil {
+			continue
+		}
 	}
 
 	return &meta, nil
@@ -73,4 +86,14 @@ func (svc *SolanaService) CreatorKeys(tokenMint solana.PublicKey) ([]solana.Publ
 		creatorKeys[i] = c.Address
 	}
 	return creatorKeys, nil
+}
+
+// FindTokenMetadataAddress returns the token metadata program-derived address given a SPL token mint address.
+func (svc *SolanaService) FindTokenMetadataAddress(mint solana.PublicKey, metadataProgam solana.PublicKey) (solana.PublicKey, uint8, error) {
+	seed := [][]byte{
+		[]byte("metadata"),
+		metadataProgam[:],
+		mint[:],
+	}
+	return solana.FindProgramAddress(seed, metadataProgam)
 }
