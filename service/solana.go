@@ -62,12 +62,12 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 		}
 
 		err := bin.NewBorshDecoder(acc.Data.GetBinary()).Decode(&meta)
-		if err != nil {
-			continue
+		if err == nil {
+			return &meta, nil
 		}
 	}
 
-	return &meta, nil
+	return nil, errors.New("unable to find token metadata")
 }
 
 func (svc *SolanaService) CreatorKeys(tokenMint solana.PublicKey) ([]solana.PublicKey, error) {

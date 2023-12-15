@@ -8,6 +8,8 @@ type Media struct {
 	MediaUri  string `json:"mediaUri,omitempty"`
 	MediaType string `json:"mediaType,omitempty"`
 	LocalPath string `json:"-"`
+	Name      string `json:"name,omitempty"`
+	Symbol    string `json:"symbol,omitempty"`
 }
 
 type SolanaMedia struct {
@@ -18,6 +20,8 @@ type SolanaMedia struct {
 	MediaUri  string `json:"mediaUri"`
 	MediaType string `json:"mediaType"`
 	LocalPath string `json:"-"`
+	Name      string `json:"name"`
+	Symbol    string `json:"symbol"`
 }
 
 func (m *SolanaMedia) Media() *Media {
@@ -29,5 +33,7 @@ func (m *SolanaMedia) Media() *Media {
 		MediaUri:  m.MediaUri,
 		MediaType: m.MediaType,
 		LocalPath: m.LocalPath,
+		Name:      m.Name,
+		Symbol:    m.Symbol,
 	}
 }

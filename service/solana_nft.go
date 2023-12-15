@@ -6,7 +6,7 @@ import (
 	"github.com/babilu-online/common/context"
 	"github.com/gagliardetto/solana-go"
 	"gorm.io/gorm/clause"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -98,7 +98,7 @@ func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataS
 	}
 
 	defer file.Body.Close()
-	data, err := ioutil.ReadAll(file.Body)
+	data, err := io.ReadAll(file.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +116,8 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 	media := nft_proxy.SolanaMedia{
 		Mint:      key,
 		LocalPath: localPath,
+		Name:      metadata.Name,
+		Symbol:    metadata.Symbol,
 	}
 
 	if metadata != nil {
@@ -132,7 +134,7 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 		}
 	}
 
-	return &media, svc.sql.Db().Clauses(clause.OnConflict{DoNothing: true}).Create(&media).Error
+	return &media, svc.sql.Db().Clauses(clause.OnConflict{UpdateAll: true}).Create(&media).Error
 }
 
 func (svc *SolanaImageService) guessImageType(metadata *nft_proxy.NFTMetadataSimple) string {

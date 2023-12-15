@@ -3,6 +3,7 @@ package services
 import (
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	"github.com/babilu-online/common/context"
+	"sync/atomic"
 )
 
 type StatService struct {
@@ -28,15 +29,15 @@ func (svc *StatService) Start() error {
 }
 
 func (svc *StatService) IncrementImageFileRequests() {
-	svc.imageFilesServed++
+	atomic.AddUint64(&svc.imageFilesServed, 1)
 }
 
 func (svc *StatService) IncrementMediaFileRequests() {
-	svc.mediaFilesServed++
+	atomic.AddUint64(&svc.mediaFilesServed, 1)
 }
 
 func (svc *StatService) IncrementMediaRequests() {
-	svc.requestsServed++
+	atomic.AddUint64(&svc.requestsServed, 1)
 }
 
 func (svc *StatService) ServiceStats() (map[string]interface{}, error) {
