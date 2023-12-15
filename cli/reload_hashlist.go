@@ -104,7 +104,7 @@ func reloadRemote(hashes Hashlist) error {
 func reloadLocally(img *services.SolanaImageService, hashes Hashlist) error {
 	for _, h := range hashes {
 		log.Printf("Loading hash: %s", h)
-		_, err := img.Media(h)
+		_, err := img.Media(h, true)
 		if err != nil {
 			log.Printf("Failed media: %s - %s", h, err)
 		}

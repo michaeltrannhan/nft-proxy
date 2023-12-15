@@ -35,10 +35,10 @@ func (svc *SolanaImageService) Start() error {
 	return nil
 }
 
-func (svc *SolanaImageService) Media(key string) (*nft_proxy.Media, error) {
+func (svc *SolanaImageService) Media(key string, skipCache bool) (*nft_proxy.Media, error) {
 	var media *nft_proxy.SolanaMedia
 	err := svc.sql.Db().First(&media, "mint = ?", key).Error
-	if err != nil {
+	if err != nil || skipCache {
 		log.Printf("Fetching metadata for: %s - %s", key, err)
 		media, err = svc.FetchMetadata(key)
 		if err != nil {
@@ -73,6 +73,8 @@ func (svc *SolanaImageService) retrieve(key string) (*nft_proxy.NFTMetadataSimpl
 		log.Printf("No token data")
 		return nil, err
 	}
+
+	log.Printf("TokenData retreive: %+v\n", tokenData)
 
 	//Get file meta if possible
 	f, err := svc.retrieveFile(tokenData.Data.Uri)
@@ -120,6 +122,7 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 		Symbol:    metadata.Symbol,
 	}
 
+	log.Printf("Metadata: %+v\n", metadata)
 	if metadata != nil {
 		media.ImageUri = metadata.Image
 		media.ImageType = svc.guessImageType(metadata)
@@ -134,7 +137,11 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 		}
 	}
 
-	return &media, svc.sql.Db().Clauses(clause.OnConflict{UpdateAll: true}).Create(&media).Error
+	return &media, svc.sql.Db().Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "mint"}}, // key colum
+		UpdateAll: true,
+		//DoUpdates: clause.AssignmentColumns([]string{"points"}), // column needed to be updated
+	}).Create(&media).Error
 }
 
 func (svc *SolanaImageService) guessImageType(metadata *nft_proxy.NFTMetadataSimple) string {

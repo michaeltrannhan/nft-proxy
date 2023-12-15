@@ -129,9 +129,15 @@ func (svc *HttpService) stats(c *gin.Context) {
 // @Router /nfts/{id} [get]
 func (svc *HttpService) showNFT(c *gin.Context) {
 
-	media, err := svc.imgSvc.Media(c.Param("id"))
+	_skipCache := c.DefaultQuery("nocache", "")
+	skipCache := false
+	if _skipCache != "" {
+		skipCache = true
+	}
+
+	media, err := svc.imgSvc.Media(c.Param("id"), skipCache)
 	if err != nil {
-		svc.httpError(c, err)
+		svc.paramErr(c, err)
 		return
 	}
 

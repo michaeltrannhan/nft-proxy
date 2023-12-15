@@ -44,9 +44,9 @@ func (svc *ImageService) Start() error {
 	return nil
 }
 
-func (svc *ImageService) Media(key string) (*nft_proxy.Media, error) {
+func (svc *ImageService) Media(key string, skipCache bool) (*nft_proxy.Media, error) {
 	if svc.IsSolKey(key) {
-		return svc.solSvc.Media(key)
+		return svc.solSvc.Media(key, skipCache)
 	}
 
 	return nil, errors.New("invalid key")
@@ -56,7 +56,7 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 	var media *nft_proxy.Media
 	var err error
 	if svc.IsSolKey(key) {
-		media, err = svc.solSvc.Media(key)
+		media, err = svc.solSvc.Media(key, false)
 		if err != nil {
 			return err
 		}
@@ -125,7 +125,7 @@ func (svc *ImageService) MediaFile(c *gin.Context, key string) error {
 	var media *nft_proxy.Media
 	var err error
 	if svc.IsSolKey(key) {
-		media, err = svc.solSvc.Media(key)
+		media, err = svc.solSvc.Media(key, false)
 		if err != nil {
 			return err
 		}
