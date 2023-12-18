@@ -130,6 +130,7 @@ func (svc *HttpService) stats(c *gin.Context) {
 // @Produce json
 // @Router /nfts/{id} [get]
 func (svc *HttpService) showNFT(c *gin.Context) {
+	svc.statSvc.IncrementMediaRequests()
 
 	_skipCache := c.DefaultQuery("nocache", "")
 	skipCache := false
@@ -147,7 +148,6 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 	c.Header("Expires", time.Now().AddDate(0, 1, 0).Format(http.TimeFormat))
 
 	c.JSON(200, media)
-	svc.statSvc.IncrementMediaRequests()
 }
 
 // @Summary Ping liquify service
@@ -155,12 +155,12 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 // @Produce json
 // @Router/nfts/{id}/image [get]
 func (svc *HttpService) showNFTImage(c *gin.Context) {
+	svc.statSvc.IncrementImageFileRequests()
 	err := svc.imgSvc.ImageFile(c, c.Param("id"))
 	if err != nil {
 		svc.mediaError(c, err)
 		return
 	}
-	svc.statSvc.IncrementImageFileRequests()
 }
 
 // @Summary Ping liquify service
@@ -168,12 +168,12 @@ func (svc *HttpService) showNFTImage(c *gin.Context) {
 // @Produce json
 // @Router /nfts/{id}/media [get]
 func (svc *HttpService) showNFTMedia(c *gin.Context) {
+	svc.statSvc.IncrementMediaFileRequests()
 	err := svc.imgSvc.MediaFile(c, c.Param("id"))
 	if err != nil {
 		svc.mediaError(c, err)
 		return
 	}
-	svc.statSvc.IncrementMediaFileRequests()
 }
 
 func (svc *HttpService) paramErr(c *gin.Context, err error) {

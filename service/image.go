@@ -7,7 +7,7 @@ import (
 	"github.com/babilu-online/common/context"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -53,8 +53,20 @@ func (svc *ImageService) Media(key string, skipCache bool) (*nft_proxy.Media, er
 }
 
 func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
-	var media *nft_proxy.Media
 	var err error
+
+	//Check pre-cache
+	cacheName := fmt.Sprintf("./cache/solana/%s.jpg", key)
+	ifo, err := os.Stat(cacheName)
+	if err == nil && ifo.Size() != 0 { //If our precache check works, just return that
+		log.Println("pre-cache HIT", cacheName)
+		return svc.writeFile(c, cacheName, "jpg")
+	} else {
+		log.Println("pre-cache MISS", cacheName)
+	}
+
+	//Fetch the image file to see if its already in the system
+	var media *nft_proxy.Media
 	if svc.IsSolKey(key) {
 		media, err = svc.solSvc.Media(key, false)
 		if err != nil {
@@ -64,15 +76,11 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 		return errors.New("unsupported chain")
 	}
 
-	cacheName := fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
-	ifo, err := os.Stat(cacheName)
-	modTime := time.Now()
-	if ifo != nil {
-		modTime = ifo.ModTime()
-	}
+	cacheName = fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
 
+	//Ceck for file or fetch
+	ifo, err = os.Stat(cacheName)
 	if err != nil || ifo.Size() == 0 { //Missing cached image
-		modTime = time.Now()
 		err := svc.fetchMissingImage(media, cacheName)
 		if err != nil {
 			return err
@@ -80,15 +88,31 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 	}
 
 	log.Printf("Using cached file: %s", cacheName)
-	resizedData, err := ioutil.ReadFile(cacheName)
+	return svc.writeFile(c, cacheName, media.ImageType)
+}
+
+func (svc *ImageService) writeFile(c *gin.Context, path string, imageType string) error {
+	file, err := os.Open(path)
 	if err != nil {
 		return err
+	}
+	defer file.Close()
+
+	ifo, err := file.Stat()
+	modTime := time.Now()
+	if ifo != nil {
+		modTime = ifo.ModTime()
 	}
 
 	c.Header("Cache-Control", "public, max=age=15552000")
 	c.Header("Vary", "Accept-Encoding")
 	c.Header("Last-Modified", modTime.Format("Mon, 02 Jan 2006 15:04:05 GMT")) //Mon, 03 Jun 2020 11:35:28 GMT
-	c.Data(200, fmt.Sprintf("image/%s", media.ImageType), resizedData)
+	c.Header("Content-Type", fmt.Sprintf("image/%s", imageType))
+
+	_, err = io.Copy(c.Writer, file)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -97,15 +121,29 @@ func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName str
 		return errors.New("invalid image")
 	}
 
-	resp, err := svc.httpMedia.Get(media.ImageUri)
+	//log.Println("Fetching", media.ImageUri)
+	req, _ := http.NewRequest("GET", media.ImageUri, nil)
+	req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Encoding", "gzip,deflate,br")
+
+	resp, err := svc.httpMedia.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return errors.New(resp.Status)
+	}
+
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	if len(data) == 0 {
+		return errors.New("failed to download image")
 	}
 
 	output, err := os.Create(cacheName)

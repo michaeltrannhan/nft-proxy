@@ -165,6 +165,10 @@ func (svc *SolanaImageService) guessImageType(metadata *nft_proxy.NFTMetadataSim
 		}
 	}
 
+	if strings.Contains(imageType, "?") {
+		imageType = strings.Split(imageType, "?")[0]
+	}
+
 	if !svc.ValidType(imageType) {
 		log.Printf("Invalid image type guessed: %s", imageType)
 		return "jpg"
