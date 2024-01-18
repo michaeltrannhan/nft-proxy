@@ -50,7 +50,7 @@ func (svc *SolanaImageService) Media(key string, skipCache bool) (*nft_proxy.Med
 }
 
 func (svc *SolanaImageService) FetchMetadata(key string) (*nft_proxy.SolanaMedia, error) {
-	metadata, err := svc.retrieve(key)
+	metadata, err := svc._retrieveMetadata(key)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (svc *SolanaImageService) FetchMetadata(key string) (*nft_proxy.SolanaMedia
 	return media, nil
 }
 
-func (svc *SolanaImageService) retrieve(key string) (*nft_proxy.NFTMetadataSimple, error) {
+func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMetadataSimple, error) {
 	pk, err := solana.PublicKeyFromBase58(key)
 	if err != nil {
 		return nil, err

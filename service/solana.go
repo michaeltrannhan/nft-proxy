@@ -3,6 +3,7 @@ package services
 import (
 	ctx "context"
 	"errors"
+	"github.com/alphabatem/nft-proxy/token_2022"
 	"github.com/babilu-online/common/context"
 	bin "github.com/gagliardetto/binary"
 	token_metadata "github.com/gagliardetto/metaplex-go/clients/token-metadata"
@@ -48,16 +49,42 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 	ata, _, _ := svc.FindTokenMetadataAddress(key, solana.TokenMetadataProgramID)
 	ataT22, _, _ := svc.FindTokenMetadataAddress(key, solana.MustPublicKeyFromBase58("META4s4fSmpkTbZoUsgC1oBnWB31vQcmnN8giPw51Zu"))
 
-	accs, err := svc.client.GetMultipleAccountsWithOpts(ctx.TODO(), []solana.PublicKey{
-		ata,
-		ataT22,
-	}, &rpc.GetMultipleAccountsOpts{Commitment: rpc.CommitmentProcessed})
+	accs, err := svc.client.GetMultipleAccountsWithOpts(ctx.TODO(), []solana.PublicKey{key, ata, ataT22}, &rpc.GetMultipleAccountsOpts{Commitment: rpc.CommitmentProcessed})
 	if err != nil {
 		return nil, err
 	}
 
-	for _, acc := range accs.Value {
-		if acc == nil {
+	if accs.Value[0] != nil {
+		var mint token_2022.Mint2022
+		err = mint.UnmarshalWithDecoder(bin.NewBinDecoder(accs.Value[0].Data.GetBinary()))
+		if err != nil {
+			return nil, err
+		}
+
+		exts, err := mint.Extensions()
+		if err != nil {
+			return nil, err
+		}
+
+		if exts.MetadataPointer != nil {
+			//TODO
+		}
+
+		if exts.TokenMetadata != nil {
+			return &token_metadata.Metadata{
+				UpdateAuthority: *exts.TokenMetadata.Authority,
+				Mint:            exts.TokenMetadata.Mint,
+				Data: token_metadata.Data{
+					Name:   exts.TokenMetadata.Name,
+					Symbol: exts.TokenMetadata.Symbol,
+					Uri:    exts.TokenMetadata.Uri,
+				},
+			}, nil
+		}
+	}
+
+	for i, acc := range accs.Value {
+		if acc == nil || i == 0 {
 			continue
 		}
 
