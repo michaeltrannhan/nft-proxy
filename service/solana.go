@@ -66,25 +66,28 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 			return nil, err
 		}
 
-		if exts.MetadataPointer != nil {
-			//TODO
+		if exts != nil {
+			if exts.MetadataPointer != nil {
+				//TODO
+			}
+
+			if exts.TokenMetadata != nil {
+				return &token_metadata.Metadata{
+					UpdateAuthority: *exts.TokenMetadata.Authority,
+					Mint:            exts.TokenMetadata.Mint,
+					Data: token_metadata.Data{
+						Name:   exts.TokenMetadata.Name,
+						Symbol: exts.TokenMetadata.Symbol,
+						Uri:    exts.TokenMetadata.Uri,
+					},
+				}, nil
+			}
 		}
 
-		if exts.TokenMetadata != nil {
-			return &token_metadata.Metadata{
-				UpdateAuthority: *exts.TokenMetadata.Authority,
-				Mint:            exts.TokenMetadata.Mint,
-				Data: token_metadata.Data{
-					Name:   exts.TokenMetadata.Name,
-					Symbol: exts.TokenMetadata.Symbol,
-					Uri:    exts.TokenMetadata.Uri,
-				},
-			}, nil
-		}
 	}
 
-	for i, acc := range accs.Value {
-		if acc == nil || i == 0 {
+	for _, acc := range accs.Value[1:] {
+		if acc == nil {
 			continue
 		}
 

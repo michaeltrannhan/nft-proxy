@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	nft_proxy "github.com/alphabatem/nft-proxy"
@@ -11,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -78,7 +80,7 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 
 	cacheName = fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
 
-	//Ceck for file or fetch
+	//Check for file or fetch
 	ifo, err = os.Stat(cacheName)
 	if err != nil || ifo.Size() == 0 { //Missing cached image
 		err := svc.fetchMissingImage(media, cacheName)
@@ -121,25 +123,40 @@ func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName str
 		return errors.New("invalid image")
 	}
 
-	//log.Println("Fetching", media.ImageUri)
-	req, _ := http.NewRequest("GET", media.ImageUri, nil)
-	req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
-	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Accept-Encoding", "gzip,deflate,br")
+	var err error
+	var data []byte
+	if strings.Contains(media.ImageUri, nft_proxy.BASE64_PREFIX) {
+		base64String := media.ImageUri
+		// Remove the data:image/jpeg;base64, prefix if present
+		if v := strings.Index(base64String, nft_proxy.BASE64_PREFIX); v > -1 {
+			base64String = base64String[v+len(nft_proxy.BASE64_PREFIX):]
+		}
 
-	resp, err := svc.httpMedia.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+		data, err = base64.StdEncoding.DecodeString(base64String)
+		if err != nil {
+			return err
+		}
+	} else {
+		//log.Println("Fetching", media.ImageUri)
+		req, _ := http.NewRequest("GET", media.ImageUri, nil)
+		req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
+		req.Header.Set("Accept", "*/*")
+		req.Header.Set("Accept-Encoding", "gzip,deflate,br")
 
-	if resp.StatusCode != 200 {
-		return errors.New(resp.Status)
-	}
+		resp, err := svc.httpMedia.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+		if resp.StatusCode != 200 {
+			return errors.New(resp.Status)
+		}
+
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(data) == 0 {
@@ -150,6 +167,7 @@ func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName str
 	if err != nil {
 		return err
 	}
+	defer output.Close()
 
 	log.Printf("Resizing file: %s", cacheName)
 	err = svc.resize.Resize(data, output, svc.defaultSize)
