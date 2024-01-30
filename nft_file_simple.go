@@ -7,11 +7,11 @@ type NFTMetadataSimple struct {
 	Symbol string `json:"symbol"`
 	//Description          string               `json:"description"`
 	//SellerFeeBasisPoints float64              `json:"seller_fee_basis_points"`
-	Image        string              `json:"image"`
-	AnimationURL string              `json:"animation_url"`
-	ExternalURL  string              `json:"external_url"`
-	Collection   NFTCollectionSimple `json:"collection"`
-	Properties   NFTPropertiesSimple `json:"properties"`
+	Image        string `json:"image"`
+	AnimationURL string `json:"animation_url"`
+	ExternalURL  string `json:"external_url"`
+	//Collection   NFTCollectionSimple `json:"collection"`
+	Properties NFTPropertiesSimple `json:"properties"`
 	//Attributes           []NFTAttributeSimple `json:"attributes"`
 	Files []NFTFiles `json:"files"`
 }
