@@ -3,14 +3,17 @@ package services
 import (
 	ctx "context"
 	"errors"
+	nft_proxy "github.com/alphabatem/nft-proxy"
+	"github.com/alphabatem/nft-proxy/metaplex_core"
+	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
 	"github.com/alphabatem/nft-proxy/token_2022"
 	"github.com/babilu-online/common/context"
 	bin "github.com/gagliardetto/binary"
-	token_metadata "github.com/gagliardetto/metaplex-go/clients/token-metadata"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 	"log"
 	"os"
+	"strings"
 )
 
 type SolanaService struct {
@@ -55,32 +58,26 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 	}
 
 	if accs.Value[0] != nil {
-		var mint token_2022.Mint2022
-		err = mint.UnmarshalWithDecoder(bin.NewBinDecoder(accs.Value[0].Data.GetBinary()))
-		if err != nil {
-			return nil, err
-		}
-
-		exts, err := mint.Extensions()
-		if err != nil {
-			return nil, err
-		}
-
-		if exts != nil {
-			if exts.MetadataPointer != nil {
-				//TODO
+		log.Printf("SolanaService::TokenData:%s - Owner: %s", key, accs.Value[0].Owner)
+		switch accs.Value[0].Owner {
+		case nft_proxy.METAPLEX_CORE:
+			_meta, err := svc.decodeMetaplexCoreMetadata(key, accs.Value[0].Data.GetBinary())
+			if err != nil {
+				return nil, err
 			}
 
-			if exts.TokenMetadata != nil {
-				return &token_metadata.Metadata{
-					UpdateAuthority: *exts.TokenMetadata.Authority,
-					Mint:            exts.TokenMetadata.Mint,
-					Data: token_metadata.Data{
-						Name:   exts.TokenMetadata.Name,
-						Symbol: exts.TokenMetadata.Symbol,
-						Uri:    exts.TokenMetadata.Uri,
-					},
-				}, nil
+			if _meta != nil {
+				return _meta, nil
+			}
+		//case nft_proxy.TOKEN_2022:
+		default:
+			_meta, err := svc.decodeMintMetadata(accs.Value[0].Data.GetBinary())
+			if err != nil {
+				return nil, err
+			}
+
+			if _meta != nil {
+				return _meta, nil
 			}
 		}
 
@@ -98,6 +95,65 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 	}
 
 	return nil, errors.New("unable to find token metadata")
+}
+
+func (svc *SolanaService) decodeMintMetadata(data []byte) (*token_metadata.Metadata, error) {
+	var mint token_2022.Mint2022
+	err := mint.UnmarshalWithDecoder(bin.NewBinDecoder(data))
+	if err != nil {
+		return nil, err
+	}
+
+	exts, err := mint.Extensions()
+	if err != nil {
+		return nil, err
+	}
+
+	if exts != nil {
+		if exts.MetadataPointer != nil {
+			//TODO
+		}
+
+		if exts.TokenMetadata != nil {
+			return &token_metadata.Metadata{
+				Protocol:        token_metadata.PROTOCOL_TOKEN22_MINT,
+				UpdateAuthority: *exts.TokenMetadata.Authority,
+				Mint:            exts.TokenMetadata.Mint,
+				Data: token_metadata.Data{
+					Name:   exts.TokenMetadata.Name,
+					Symbol: exts.TokenMetadata.Symbol,
+					Uri:    exts.TokenMetadata.Uri,
+				},
+			}, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (svc *SolanaService) decodeMetaplexCoreMetadata(mint solana.PublicKey, data []byte) (*token_metadata.Metadata, error) {
+	var meta metaplex_core.Asset
+	err := meta.UnmarshalWithDecoder(bin.NewBinDecoder(data))
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("%+v\n", meta)
+
+	tMeta := token_metadata.Metadata{
+		Protocol: token_metadata.PROTOCOL_METAPLEX_CORE,
+		Mint:     mint,
+		Data: token_metadata.Data{
+			Name: strings.Trim(meta.Name, "\x00"),
+			Uri:  strings.Trim(meta.Uri, "\x00"),
+		},
+	}
+
+	if meta.UpdateAuthority != nil {
+		tMeta.UpdateAuthority = *meta.UpdateAuthority
+	}
+
+	return &tMeta, nil
 }
 
 func (svc *SolanaService) CreatorKeys(tokenMint solana.PublicKey) ([]solana.PublicKey, error) {

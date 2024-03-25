@@ -14,6 +14,8 @@ type NFTMetadataSimple struct {
 	Properties NFTPropertiesSimple `json:"properties"`
 	//Attributes           []NFTAttributeSimple `json:"attributes"`
 	Files []NFTFiles `json:"files"`
+
+	UpdateAuthority string `json:"updateAuthority"`
 }
 
 func (m *NFTMetadataSimple) AnimationFile() *NFTFiles {

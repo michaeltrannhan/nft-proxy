@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	nft_proxy "github.com/alphabatem/nft-proxy"
+	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
 	"github.com/babilu-online/common/context"
 	"github.com/gagliardetto/solana-go"
 	"gorm.io/gorm/clause"
@@ -76,17 +77,30 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 
 	log.Printf("TokenData retreive: %+v\n", tokenData)
 
-	//Get file meta if possible
-	f, err := svc.retrieveFile(tokenData.Data.Uri)
-	if err == nil {
-		return f, nil
+	switch tokenData.Protocol {
+	case token_metadata.PROTOCOL_METAPLEX_CORE:
+		return &nft_proxy.NFTMetadataSimple{
+			Image:           tokenData.Data.Uri,
+			Name:            strings.Trim(tokenData.Data.Name, "\x00"),
+			Symbol:          strings.Trim(tokenData.Data.Symbol, "\x00"),
+			UpdateAuthority: tokenData.UpdateAuthority.String(),
+		}, nil
+
+	default:
+		//Get file meta if possible
+		f, err := svc.retrieveFile(tokenData.Data.Uri)
+		if err == nil {
+			f.UpdateAuthority = tokenData.UpdateAuthority.String()
+			return f, nil
+		}
+		log.Printf("(%s) retrieveFile err: %s", tokenData.Data.Uri, err)
 	}
 
-	log.Printf("retrieveFile err: %s", err)
 	//No Metadata
 	return &nft_proxy.NFTMetadataSimple{
-		Name:   strings.Trim(tokenData.Data.Name, "\x00"),
-		Symbol: strings.Trim(tokenData.Data.Symbol, "\x00"),
+		Name:            strings.Trim(tokenData.Data.Name, "\x00"),
+		Symbol:          strings.Trim(tokenData.Data.Symbol, "\x00"),
+		UpdateAuthority: tokenData.UpdateAuthority.String(),
 	}, nil
 }
 
@@ -127,6 +141,7 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 		media.Symbol = metadata.Symbol
 		media.ImageUri = metadata.Image
 		media.ImageType = svc.guessImageType(metadata)
+		media.UpdateAuthority = metadata.UpdateAuthority
 
 		mediaFile := metadata.AnimationFile()
 		if mediaFile != nil {
