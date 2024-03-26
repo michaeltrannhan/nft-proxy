@@ -57,6 +57,8 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 		return nil, err
 	}
 
+	log.Printf("%+v\n", accs.Value)
+
 	if accs.Value[0] != nil {
 		log.Printf("SolanaService::TokenData:%s - Owner: %s", key, accs.Value[0].Owner)
 		switch accs.Value[0].Owner {
@@ -89,9 +91,11 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 		}
 
 		err := bin.NewBorshDecoder(acc.Data.GetBinary()).Decode(&meta)
-		if err == nil {
-			return &meta, nil
+		if err != nil {
+			log.Printf("Decode err: %s", err)
+			continue
 		}
+		return &meta, nil
 	}
 
 	return nil, errors.New("unable to find token metadata")

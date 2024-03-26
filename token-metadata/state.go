@@ -29,7 +29,7 @@ type Metadata struct {
 	// Collection
 	Collection *token_metadata.Collection `bin:"optional"`
 
-	Protocol Protocol
+	Protocol Protocol `bin:"-"`
 }
 
 type Data struct {

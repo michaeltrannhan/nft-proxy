@@ -82,6 +82,14 @@ func (svc *HttpService) Start() error {
 	v1 := r.Group("/v1")
 	//docs.SwaggerInfo.BasePath = "/v1"
 
+	v1.GET("tokens/:id", svc.showNFT)
+	v1.GET("tokens/:id/image", svc.showNFTImage)
+	v1.GET("tokens/:id/image.gif", svc.showNFTImage)
+	v1.GET("tokens/:id/image.png", svc.showNFTImage)
+	v1.GET("tokens/:id/image.jpg", svc.showNFTImage)
+	v1.GET("tokens/:id/image.jpeg", svc.showNFTImage)
+	v1.GET("tokens/:id/media", svc.showNFTMedia)
+
 	v1.GET("nfts/:id", svc.showNFT)
 	v1.GET("nfts/:id/image", svc.showNFTImage)
 	v1.GET("nfts/:id/image.gif", svc.showNFTImage)
