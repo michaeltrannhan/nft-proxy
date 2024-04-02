@@ -1,6 +1,6 @@
 module github.com/alphabatem/nft-proxy
 
-go 1.18
+go 1.21.1
 
 require (
 	github.com/babilu-online/common v1.1.689
@@ -19,6 +19,7 @@ require (
 require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.4 // indirect
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
+	github.com/alphabatem/token_2022_go v0.0.0-20240402180546-67e6820e2840 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

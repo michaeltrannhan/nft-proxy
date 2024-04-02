@@ -21,7 +21,7 @@ func TestSolanaImageService_FetchMetadata(t *testing.T) {
 	svc := SolanaService{}
 	svc.Start()
 
-	d, err := svc.TokenData(pk)
+	d, _, err := svc.TokenData(pk)
 	if err != nil {
 		t.Fatal(err)
 	}

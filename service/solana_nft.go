@@ -69,18 +69,19 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 	if err != nil {
 		return nil, err
 	}
-	tokenData, err := svc.sol.TokenData(pk)
+	tokenData, decimals, err := svc.sol.TokenData(pk)
 	if err != nil || tokenData == nil {
 		log.Printf("No token data - %s", err)
 		return nil, err
 	}
 
-	log.Printf("TokenData retreive: %+v\n", tokenData)
+	//log.Printf("TokenData retreive (%v): %+v\n", decimals, tokenData)
 
 	switch tokenData.Protocol {
 	case token_metadata.PROTOCOL_METAPLEX_CORE:
 		return &nft_proxy.NFTMetadataSimple{
 			Image:           tokenData.Data.Uri,
+			Decimals:        decimals,
 			Name:            strings.Trim(tokenData.Data.Name, "\x00"),
 			Symbol:          strings.Trim(tokenData.Data.Symbol, "\x00"),
 			UpdateAuthority: tokenData.UpdateAuthority.String(),
@@ -89,6 +90,7 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 		//Get file meta if possible
 		f, err := svc.retrieveFile(tokenData.Data.Uri)
 		if err == nil {
+			f.Decimals = decimals
 			f.UpdateAuthority = tokenData.UpdateAuthority.String()
 			return f, nil
 		}
@@ -98,6 +100,7 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 	//No Metadata
 	return &nft_proxy.NFTMetadataSimple{
 		Name:            strings.Trim(tokenData.Data.Name, "\x00"),
+		Decimals:        decimals,
 		Symbol:          strings.Trim(tokenData.Data.Symbol, "\x00"),
 		UpdateAuthority: tokenData.UpdateAuthority.String(),
 	}, nil
@@ -141,6 +144,7 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 		media.ImageUri = metadata.Image
 		media.ImageType = svc.guessImageType(metadata)
 		media.UpdateAuthority = metadata.UpdateAuthority
+		media.MintDecimals = metadata.Decimals
 
 		mediaFile := metadata.AnimationFile()
 		if mediaFile != nil {
@@ -155,7 +159,6 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 	return &media, svc.sql.Db().Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "mint"}}, // key colum
 		UpdateAll: true,
-		//DoUpdates: clause.AssignmentColumns([]string{"points"}), // column needed to be updated
 	}).Create(&media).Error
 }
 

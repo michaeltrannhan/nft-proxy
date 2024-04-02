@@ -3,8 +3,9 @@ package nft_proxy
 import "strings"
 
 type NFTMetadataSimple struct {
-	Name   string `json:"name"`
-	Symbol string `json:"symbol"`
+	Name     string `json:"name"`
+	Symbol   string `json:"symbol"`
+	Decimals uint8  `json:"-"`
 	//Description          string               `json:"description"`
 	//SellerFeeBasisPoints float64              `json:"seller_fee_basis_points"`
 	Image        string `json:"image"`

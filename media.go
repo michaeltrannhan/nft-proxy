@@ -3,6 +3,7 @@ package nft_proxy
 type Media struct {
 	ID              uint   `json:"-" gorm:"primaryKey"`
 	Mint            string `json:"mint" gorm:"uniqueIndex"`
+	MintDecimals    uint8  `json:"decimals"`
 	ImageUri        string `json:"imageUri"`
 	ImageType       string `json:"imageType"`
 	MediaUri        string `json:"mediaUri,omitempty"`
@@ -16,6 +17,7 @@ type Media struct {
 type SolanaMedia struct {
 	ID              uint   `json:"-" gorm:"primaryKey"`
 	Mint            string `json:"mint" gorm:"uniqueIndex"`
+	MintDecimals    uint8  `json:"decimals"`
 	ImageUri        string `json:"imageUri"`
 	ImageType       string `json:"ImageType"`
 	MediaUri        string `json:"mediaUri"`
@@ -30,6 +32,7 @@ func (m *SolanaMedia) Media() *Media {
 	return &Media{
 		ID:              m.ID,
 		Mint:            m.Mint,
+		MintDecimals:    m.MintDecimals,
 		ImageUri:        m.ImageUri,
 		ImageType:       m.ImageType,
 		MediaUri:        m.MediaUri,
