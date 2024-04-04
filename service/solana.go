@@ -83,7 +83,7 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 				log.Printf("T22 Ext err: %s", err)
 				break
 			}
-			if exts.TokenMetadata != nil {
+			if exts != nil && exts.TokenMetadata != nil {
 				return &token_metadata.Metadata{
 					Protocol:        token_metadata.PROTOCOL_TOKEN22_MINT,
 					UpdateAuthority: *exts.TokenMetadata.Authority,

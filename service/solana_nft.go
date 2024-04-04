@@ -89,7 +89,7 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 	default:
 		//Get file meta if possible
 		f, err := svc.retrieveFile(tokenData.Data.Uri)
-		if err == nil {
+		if f != nil {
 			f.Decimals = decimals
 			f.UpdateAuthority = tokenData.UpdateAuthority.String()
 			return f, nil
