@@ -57,16 +57,6 @@ func (svc *ImageService) Media(key string, skipCache bool) (*nft_proxy.Media, er
 func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 	var err error
 
-	//Check pre-cache
-	cacheName := fmt.Sprintf("./cache/solana/%s.jpg", key)
-	ifo, err := os.Stat(cacheName)
-	if err == nil && ifo.Size() != 0 { //If our precache check works, just return that
-		log.Println("pre-cache HIT", cacheName)
-		return svc.writeFile(c, cacheName, "jpg")
-	} else {
-		log.Println("pre-cache MISS", cacheName)
-	}
-
 	//Fetch the image file to see if its already in the system
 	var media *nft_proxy.Media
 	if svc.IsSolKey(key) {
@@ -78,10 +68,10 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 		return errors.New("unsupported chain")
 	}
 
-	cacheName = fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
+	cacheName := fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
 
 	//Check for file or fetch
-	ifo, err = os.Stat(cacheName)
+	ifo, err := os.Stat(cacheName)
 	if err != nil || ifo.Size() == 0 { //Missing cached image
 		err := svc.fetchMissingImage(media, cacheName)
 		if err != nil {
@@ -90,7 +80,7 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 	}
 	log.Printf("Using cached file: %s", cacheName)
 
-	return svc.writeFile(c, cacheName, media.ImageType)
+	return svc.writeFile(c, cacheName, media)
 }
 
 func (svc *ImageService) ClearCache(key string) error {
@@ -111,7 +101,7 @@ func (svc *ImageService) ClearCache(key string) error {
 	return svc.solSvc.RemoveMedia(key)
 }
 
-func (svc *ImageService) writeFile(c *gin.Context, path string, imageType string) error {
+func (svc *ImageService) writeFile(c *gin.Context, path string, media *nft_proxy.Media) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return err
@@ -124,10 +114,10 @@ func (svc *ImageService) writeFile(c *gin.Context, path string, imageType string
 		modTime = ifo.ModTime()
 	}
 
-	c.Header("Cache-Control", "public, max=age=15552000")
+	c.Header("Cache-Control", "public, max=age=172800")
 	c.Header("Vary", "Accept-Encoding")
 	c.Header("Last-Modified", modTime.Format("Mon, 02 Jan 2006 15:04:05 GMT")) //Mon, 03 Jun 2020 11:35:28 GMT
-	c.Header("Content-Type", fmt.Sprintf("image/%s", imageType))
+	c.Header("Content-Type", fmt.Sprintf("image/%s", media.ImageType))
 
 	_, err = io.Copy(c.Writer, file)
 	if err != nil {
