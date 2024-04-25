@@ -140,10 +140,12 @@ func (svc *HttpService) stats(c *gin.Context) {
 func (svc *HttpService) showNFT(c *gin.Context) {
 	svc.statSvc.IncrementMediaRequests()
 
-	_skipCache := c.DefaultQuery("nocache", "")
-	skipCache := false
-	if _skipCache != "" {
-		skipCache = true
+	skipCache, _ := strconv.ParseBool(c.DefaultQuery("nocache", ""))
+	if skipCache {
+		if err := svc.imgSvc.ClearCache(c.Param("id")); err != nil {
+			svc.paramErr(c, err)
+			return
+		}
 	}
 
 	media, err := svc.imgSvc.Media(c.Param("id"), skipCache)
@@ -152,8 +154,8 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 		return
 	}
 
-	c.Header("Cache-Control", "public, max-age=31536000")
-	c.Header("Expires", time.Now().AddDate(0, 1, 0).Format(http.TimeFormat))
+	c.Header("Cache-Control", "public, max-age=172800")
+	c.Header("Expires", time.Now().AddDate(0, 0, 2).Format(http.TimeFormat))
 
 	c.JSON(200, media)
 }
@@ -194,7 +196,7 @@ func (svc *HttpService) paramErr(c *gin.Context, err error) {
 func (svc *HttpService) mediaError(c *gin.Context, err error) {
 	log.Printf("Media Err: %s", err)
 
-	c.Header("Cache-Control", "public, max=age=10000") //Stop flooding
+	c.Header("Cache-Control", "public, max=age=60") //Stop flooding
 	c.Data(200, "image/jpeg", svc.defaultImage)
 	//c.JSON(200, gin.H{
 	//	"error": err.Error(),

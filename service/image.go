@@ -88,9 +88,27 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 			return err
 		}
 	}
-
 	log.Printf("Using cached file: %s", cacheName)
+
 	return svc.writeFile(c, cacheName, media.ImageType)
+}
+
+func (svc *ImageService) ClearCache(key string) error {
+	m, err := svc.solSvc.Media(key, false)
+	if err != nil {
+		return err
+	}
+
+	if time.Since(m.CreatedAt) < 3*time.Hour {
+		return errors.New("cache recently cleared")
+	}
+
+	//Clear cached files
+	_ = os.Remove(fmt.Sprintf("./cache/solana/%s.jpg", key))
+	_ = os.Remove(fmt.Sprintf("./cache/solana/%s.png", key))
+
+	//Clear
+	return svc.solSvc.RemoveMedia(key)
 }
 
 func (svc *ImageService) writeFile(c *gin.Context, path string, imageType string) error {

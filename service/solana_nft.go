@@ -50,6 +50,10 @@ func (svc *SolanaImageService) Media(key string, skipCache bool) (*nft_proxy.Med
 	return media.Media(), nil
 }
 
+func (svc *SolanaImageService) RemoveMedia(key string) error {
+	return svc.sql.Db().Delete(&nft_proxy.SolanaMedia{}, "mint = ?", key).Error
+}
+
 func (svc *SolanaImageService) FetchMetadata(key string) (*nft_proxy.SolanaMedia, error) {
 	metadata, err := svc._retrieveMetadata(key)
 	if err != nil {
