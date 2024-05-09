@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -141,7 +142,7 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 	svc.statSvc.IncrementMediaRequests()
 
 	skipCache, _ := strconv.ParseBool(c.DefaultQuery("nocache", ""))
-	if skipCache {
+	if skipCache || rand.Intn(1000) == 1 {
 		if err := svc.imgSvc.ClearCache(c.Param("id")); err != nil {
 			svc.paramErr(c, err)
 			return

@@ -26,6 +26,8 @@ type ImageService struct {
 	solSvc *SolanaImageService
 	resize *ResizeService
 	sql    *SqliteService
+
+	exemptImages map[string]struct{} //Some older & core tokens dont have active metadata so we shouldn't update them
 }
 
 const IMG_SVC = "img_svc"
@@ -42,6 +44,17 @@ func (svc *ImageService) Start() error {
 	svc.httpMedia = &http.Client{Timeout: 10 * time.Second}
 
 	svc.defaultSize = 720 //Gifs will be half the size
+
+	svc.exemptImages = map[string]struct{}{
+		"2kMpEJCZL8vEDZe7YPLMCS9Y3WKSAMedXBn7xHPvsWvi": {},
+		"7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU": {},
+		"AFbX8oGjGpmVFywbVouvhQSRmiW2aR1mohfahi4Y2AdB": {},
+		"CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo": {},
+		"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {},
+		"Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": {},
+		"mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So":  {},
+		"So11111111111111111111111111111111111111112":  {},
+	}
 
 	return nil
 }
@@ -89,8 +102,10 @@ func (svc *ImageService) ClearCache(key string) error {
 		return err
 	}
 
-	if time.Since(m.CreatedAt) < 3*time.Hour {
-		return errors.New("cache recently cleared")
+	_, exempt := svc.exemptImages[key]
+	if time.Since(m.CreatedAt) < 3*time.Hour || exempt {
+		//return errors.New("cache recently cleared")
+		return nil
 	}
 
 	//Clear cached files
