@@ -7,6 +7,8 @@ rsync -aP ./docs root@159.65.58.224:/var/www/degencdn/
 rsync -aP ./raw_cache/solana/ root@159.65.58.224:/mnt/volume_lon1_01/cache/solana/
 
 
+# DOWNLOAD rsync -aP root@159.65.58.224:/var/www/degencdn/nft_proxy.db ./nft_proxy.prod.db
+
 ssh root@159.65.58.224
 
 

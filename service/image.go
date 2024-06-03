@@ -91,7 +91,7 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 			return err
 		}
 	}
-	log.Printf("Using cached file: %s", cacheName)
+	//log.Printf("Using cached file: %s", cacheName)
 
 	return svc.writeFile(c, cacheName, media)
 }
@@ -103,17 +103,18 @@ func (svc *ImageService) ClearCache(key string) error {
 	}
 
 	_, exempt := svc.exemptImages[key]
-	if time.Since(m.CreatedAt) < 3*time.Hour || exempt {
+	if exempt {
 		//return errors.New("cache recently cleared")
 		return nil
 	}
 
-	//Clear cached files
-	_ = os.Remove(fmt.Sprintf("./cache/solana/%s.jpg", key))
-	_ = os.Remove(fmt.Sprintf("./cache/solana/%s.png", key))
+	cacheName := fmt.Sprintf("./cache/solana/%s.%s", m.Mint, m.ImageType)
+	err = svc.fetchMissingImage(m, cacheName)
+	if err != nil {
+		return err
+	}
 
-	//Clear
-	return svc.solSvc.RemoveMedia(key)
+	return nil
 }
 
 func (svc *ImageService) writeFile(c *gin.Context, path string, media *nft_proxy.Media) error {
@@ -160,8 +161,15 @@ func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName str
 			return err
 		}
 	} else {
-		//log.Println("Fetching", media.ImageUri)
-		req, _ := http.NewRequest("GET", media.ImageUri, nil)
+		media.ImageUri = strings.Replace(strings.TrimSpace(media.ImageUri), ".ipfs.nftstorage.link", ".ipfs.w3s.link", 1)
+
+		log.Println("Fetching", media.ImageUri)
+
+		req, err := http.NewRequest("GET", media.ImageUri, nil)
+		if err != nil {
+			return err
+		}
+
 		req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
 		req.Header.Set("Accept", "*/*")
 		req.Header.Set("Accept-Encoding", "gzip,deflate,br")
@@ -192,7 +200,7 @@ func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName str
 	}
 	defer output.Close()
 
-	log.Printf("Resizing file: %s", cacheName)
+	//log.Printf("Resizing file: %s", cacheName)
 	err = svc.resize.Resize(data, output, svc.defaultSize)
 	if err != nil {
 		return err

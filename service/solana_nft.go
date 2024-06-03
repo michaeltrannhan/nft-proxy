@@ -40,7 +40,7 @@ func (svc *SolanaImageService) Media(key string, skipCache bool) (*nft_proxy.Med
 	var media *nft_proxy.SolanaMedia
 	err := svc.sql.Db().First(&media, "mint = ?", key).Error
 	if err != nil || skipCache {
-		log.Printf("Fetching metadata for: %s - %s", key, err)
+		log.Printf("FetchMetadata - %s err: %s", key, err)
 		media, err = svc.FetchMetadata(key)
 		if err != nil {
 			return nil, err //Still cant get metadata
@@ -75,7 +75,7 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 	}
 	tokenData, decimals, err := svc.sol.TokenData(pk)
 	if err != nil || tokenData == nil {
-		log.Printf("No token data - %s", err)
+		log.Printf("No token data for %s - %s", pk, err)
 		return nil, err
 	}
 
