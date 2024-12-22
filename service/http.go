@@ -3,9 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"github.com/babilu-online/common/context"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -13,6 +10,10 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/babilu-online/common/context"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 // @title NFT Aggregator Swap API
@@ -83,27 +84,26 @@ func (svc *HttpService) Start() error {
 	v1 := r.Group("/v1")
 	//docs.SwaggerInfo.BasePath = "/v1"
 
-	v1.GET("tokens/:id", svc.showNFT)
-	v1.GET("tokens/:id/image", svc.showNFTImage)
-	v1.GET("tokens/:id/image.gif", svc.showNFTImage)
-	v1.GET("tokens/:id/image.png", svc.showNFTImage)
-	v1.GET("tokens/:id/image.jpg", svc.showNFTImage)
-	v1.GET("tokens/:id/image.jpeg", svc.showNFTImage)
-	v1.GET("tokens/:id/media", svc.showNFTMedia)
-
-	v1.GET("nfts/:id", svc.showNFT)
-	v1.GET("nfts/:id/image", svc.showNFTImage)
-	v1.GET("nfts/:id/image.gif", svc.showNFTImage)
-	v1.GET("nfts/:id/image.png", svc.showNFTImage)
-	v1.GET("nfts/:id/image.jpg", svc.showNFTImage)
-	v1.GET("nfts/:id/image.jpeg", svc.showNFTImage)
-	v1.GET("nfts/:id/media", svc.showNFTMedia)
+	// unify repeated routes for tokens and nfts
+	svc.registerNFTEndpoints(v1, "tokens")
+	svc.registerNFTEndpoints(v1, "nfts")
 
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
 	})
 
 	return r.Run(fmt.Sprintf(":%v", svc.Port))
+}
+
+func (svc *HttpService) registerNFTEndpoints(g *gin.RouterGroup, prefix string) {
+	r := g.Group(prefix)
+	r.GET("/:id", svc.showNFT)
+	r.GET("/:id/image", svc.showNFTImage)
+	r.GET("/:id/image.gif", svc.showNFTImage)
+	r.GET("/:id/image.png", svc.showNFTImage)
+	r.GET("/:id/image.jpg", svc.showNFTImage)
+	r.GET("/:id/image.jpeg", svc.showNFTImage)
+	r.GET("/:id/media", svc.showNFTMedia)
 }
 
 type Pong struct {
@@ -134,10 +134,12 @@ func (svc *HttpService) stats(c *gin.Context) {
 	c.JSON(200, stats)
 }
 
-// @Summary Ping liquify service
+// @Summary Get NFT metadata
+// @Description Get NFT metadata by ID
 // @Accept  json
 // @Produce json
-// @Router /nfts/{id} [get]
+// @Param   id  path  string  true  "NFT ID"
+// @Router /v1/nfts/{id} [get]
 func (svc *HttpService) showNFT(c *gin.Context) {
 	svc.statSvc.IncrementMediaRequests()
 
@@ -161,10 +163,12 @@ func (svc *HttpService) showNFT(c *gin.Context) {
 	c.JSON(200, media)
 }
 
-// @Summary Ping liquify service
+// @Summary Get NFT image
+// @Description Get NFT image by ID
 // @Accept  json
-// @Produce json
-// @Router/nfts/{id}/image [get]
+// @Produce image/*
+// @Param   id  path  string  true  "NFT ID"
+// @Router /v1/nfts/{id}/image [get]
 func (svc *HttpService) showNFTImage(c *gin.Context) {
 	svc.statSvc.IncrementImageFileRequests()
 	err := svc.imgSvc.ImageFile(c, c.Param("id"))
@@ -174,10 +178,12 @@ func (svc *HttpService) showNFTImage(c *gin.Context) {
 	}
 }
 
-// @Summary Ping liquify service
+// @Summary Get NFT media
+// @Description Get NFT media file by ID
 // @Accept  json
-// @Produce json
-// @Router /nfts/{id}/media [get]
+// @Produce */*
+// @Param   id  path  string  true  "NFT ID"
+// @Router /v1/nfts/{id}/media [get]
 func (svc *HttpService) showNFTMedia(c *gin.Context) {
 	svc.statSvc.IncrementMediaFileRequests()
 	err := svc.imgSvc.MediaFile(c, c.Param("id"))
@@ -187,19 +193,20 @@ func (svc *HttpService) showNFTMedia(c *gin.Context) {
 	}
 }
 
+// Consistent error handling with proper status codes
 func (svc *HttpService) paramErr(c *gin.Context, err error) {
-	c.JSON(400, gin.H{
+	status := http.StatusBadRequest
+	if errors.Is(err, ErrUnauthorized) {
+		status = http.StatusUnauthorized
+	}
+	c.JSON(status, gin.H{
 		"error": err.Error(),
 	})
 }
 
 // TODO Replace with placeholder image
 func (svc *HttpService) mediaError(c *gin.Context, err error) {
-	log.Printf("Media Err: %s", err)
-
-	c.Header("Cache-Control", "public, max=age=60") //Stop flooding
-	c.Data(200, "image/jpeg", svc.defaultImage)
-	//c.JSON(200, gin.H{
-	//	"error": err.Error(),
-	//})
+	log.Printf("Media Error: %v", err)
+	c.Header("Cache-Control", "public, max-age=60, must-revalidate")
+	c.Data(http.StatusOK, "image/jpeg", svc.defaultImage)
 }

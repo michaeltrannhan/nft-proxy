@@ -2,16 +2,17 @@ package services
 
 import (
 	"encoding/json"
-	nft_proxy "github.com/alphabatem/nft-proxy"
-	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
-	"github.com/babilu-online/common/context"
-	"github.com/gagliardetto/solana-go"
-	"gorm.io/gorm/clause"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
+	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
+	"github.com/babilu-online/common/context"
+	"github.com/gagliardetto/solana-go"
+	"gorm.io/gorm/clause"
 )
 
 type SolanaImageService struct {

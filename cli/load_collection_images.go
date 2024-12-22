@@ -1,15 +1,19 @@
 package main
 
 import (
+	"errors"
+	"log"
+
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	token_metadata "github.com/gagliardetto/metaplex-go/clients/token-metadata"
-	"log"
 )
 
 type collectionLoader struct {
 	metaWorkerCount  int
 	fileWorkerCount  int
 	mediaWorkerCount int
+
+	done chan struct{} // Add channel for graceful shutdown
 
 	metaDataIn chan *token_metadata.Metadata
 	fileDataIn chan *nft_proxy.NFTMetadataSimple
@@ -50,35 +54,56 @@ func main() {
 }
 
 func (l *collectionLoader) spawnWorkers() {
-	for i := 0; i < l.metaWorkerCount; i++ {
-		go l.metaDataWorker()
+	spawnWorker := func(worker func(), count int) {
+		for i := 0; i < count; i++ {
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("Recovered from panic in worker: %v", r)
+					}
+				}()
+				worker()
+			}()
+		}
 	}
-	for i := 0; i < l.fileWorkerCount; i++ {
-		go l.fileDataWorker()
-	}
-	for i := 0; i < l.mediaWorkerCount; i++ {
-		go l.mediaWorker()
-	}
+	spawnWorker(l.metaDataWorker, l.metaWorkerCount)
+	spawnWorker(l.fileDataWorker, l.fileWorkerCount)
+	spawnWorker(l.mediaWorker, l.mediaWorkerCount)
 }
 
 func (l *collectionLoader) loadCollection() error {
 	return nil
 }
 
-//Fetches the off-chain data from the on-chain account & passes to `fileDataWorker`
+// Fetches the off-chain data from the on-chain account & passes to `fileDataWorker`
 func (l *collectionLoader) metaDataWorker() {
-
+	return
 }
 
-//Downloads required files & passes to `mediaWorker`
+// Downloads required files & passes to `mediaWorker`
 func (l *collectionLoader) fileDataWorker() {
-
+	return
 }
 
-//Stores media data down to SQL
+// Stores media data down to SQL with proper error handling
 func (l *collectionLoader) mediaWorker() {
-	for m := range l.mediaIn {
-		//TODO SAVE TO DB
-		log.Printf("M: %s", m.MediaUri)
+	for {
+		select {
+		case m := <-l.mediaIn:
+			if err := l.saveMedia(m); err != nil {
+				log.Printf("Failed to save media: %v", err)
+			}
+		case <-l.done:
+			return
+		}
 	}
+}
+
+func (l *collectionLoader) saveMedia(m *nft_proxy.Media) error {
+	if m == nil {
+		return errors.New("nil media object")
+	}
+	log.Printf("Saving media: %s", m.MediaUri)
+	// TODO: Implement actual DB save
+	return nil
 }

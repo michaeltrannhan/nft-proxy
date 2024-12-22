@@ -2,14 +2,27 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	"github.com/babilu-online/common/context"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"os"
 )
+
+// DBError represents a database error with HTTP status code
+type DBError struct {
+	StatusCode int
+	Err        error
+}
+
+func (e *DBError) Error() string {
+	return fmt.Sprintf("database error (status %d): %v", e.StatusCode, e.Err)
+}
 
 type SqliteService struct {
 	context.DefaultService
@@ -23,12 +36,12 @@ type SqliteService struct {
 
 const SQLITE_SVC = "sqlite_svc"
 
-//Id returns Service ID
+// Id returns Service ID
 func (ds SqliteService) Id() string {
 	return SQLITE_SVC
 }
 
-//Db Access to raw SqliteService db
+// Db Access to raw SqliteService db
 func (ds SqliteService) Db() *gorm.DB {
 	return ds.db
 }
@@ -43,56 +56,89 @@ func (ds *SqliteService) Configure(ctx *context.Context) error {
 // Start the service and open connection to the database
 // Migrate any tables that have changed since last runtime
 func (ds *SqliteService) Start() (err error) {
-	ds.db, err = gorm.Open(sqlite.Open(ds.database), &gorm.Config{
+	config := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Error),
-	})
-	if err != nil {
-		return err
 	}
 
+	ds.db, err = gorm.Open(sqlite.Open(ds.database), config)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Configure connection pool
+	sqlDB, err := ds.db.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get database instance: %w", err)
+	}
+
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// Add indexes and migrate schema
 	err = ds.db.AutoMigrate(&nft_proxy.SolanaMedia{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to migrate schema: %w", err)
 	}
 
 	return nil
 }
 
-//Find returns the db query for a statement
+// Find returns the db query for a statement
 func (ds *SqliteService) Find(out interface{}, where string, args ...interface{}) error {
-	return ds.error(ds.db.Find(out, where, args).Error)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return ds.error(ds.db.WithContext(ctx).Find(out, where, args).Error)
 }
 
 // Create a new item in the SqliteService
 func (ds *SqliteService) Create(val interface{}) (interface{}, error) {
-	err := ds.db.Create(val).Error
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := ds.db.WithContext(ctx).Create(val).Error
 	return val, ds.error(err)
 }
 
 // Update an existing item
 func (ds *SqliteService) Update(old interface{}, new interface{}) (interface{}, error) {
-	err := ds.db.Model(old).Updates(new).Error
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := ds.db.WithContext(ctx).Model(old).Updates(new).Error
 	return new, ds.error(err)
 }
 
 // Delete an existing item
 func (ds *SqliteService) Delete(val interface{}) error {
-	err := ds.db.Delete(val).Error
-	return ds.error(err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return ds.error(ds.db.WithContext(ctx).Delete(val).Error)
 }
 
-//Migrate creates any new tables needed
+// Migrate creates any new tables needed
 func (ds *SqliteService) Migrate(values ...interface{}) error {
-	err := ds.db.AutoMigrate(values).Error()
-	if err != "" {
-		return errors.New(err)
+	err := ds.db.AutoMigrate(values...)
+	if err != nil {
+		return fmt.Errorf("migration failed: %w", err)
 	}
 	return nil
 }
 
-//Shutdown Gracefully close the database connection
+// Shutdown Gracefully close the database connection
 func (ds *SqliteService) Shutdown() {
-	//
+	// Close the database connection
+	sqlDB, err := ds.db.DB()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	err = sqlDB.Close()
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // Parse an error returned from the database into a more contextual error that can be used with http response codes
@@ -101,16 +147,20 @@ func (ds *SqliteService) error(err error) error {
 		return nil
 	}
 
-	var code int
+	var statusCode int
 
-	switch err {
-	case gorm.ErrRecordNotFound:
-		code = 404
-		break
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		statusCode = 404
+	case errors.Is(err, context.DeadlineExceeded):
+		statusCode = 504
 	default:
-		code = 500
+		statusCode = 500
 	}
 
-	log.Println(code) //TODO implement
-	return err
+	log.Printf("Database error: %v (status code: %d)", err, statusCode)
+	return &DBError{
+		StatusCode: statusCode,
+		Err:        err,
+	}
 }

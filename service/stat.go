@@ -1,9 +1,10 @@
 package services
 
 import (
+	"sync/atomic"
+
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	"github.com/babilu-online/common/context"
-	"sync/atomic"
 )
 
 type StatService struct {
@@ -45,9 +46,9 @@ func (svc *StatService) ServiceStats() (map[string]interface{}, error) {
 	svc.sql.Db().Model(&nft_proxy.SolanaMedia{}).Count(&imgCount)
 
 	return map[string]interface{}{
-		"images_stored":      imgCount,
-		"requests_served":    svc.requestsServed,
-		"image_files_served": svc.imageFilesServed,
-		"media_files_served": svc.mediaFilesServed,
+		"imagesStored":     imgCount,
+		"requestsServed":   svc.requestsServed,
+		"imageFilesServed": svc.imageFilesServed,
+		"mediaFilesServed": svc.mediaFilesServed,
 	}, nil
 }
