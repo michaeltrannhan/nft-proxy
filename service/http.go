@@ -98,11 +98,7 @@ func (svc *HttpService) Start() error {
 func (svc *HttpService) registerNFTEndpoints(g *gin.RouterGroup, prefix string) {
 	r := g.Group(prefix)
 	r.GET("/:id", svc.showNFT)
-	r.GET("/:id/image", svc.showNFTImage)
-	r.GET("/:id/image.gif", svc.showNFTImage)
-	r.GET("/:id/image.png", svc.showNFTImage)
-	r.GET("/:id/image.jpg", svc.showNFTImage)
-	r.GET("/:id/image.jpeg", svc.showNFTImage)
+	r.GET("/:id/image", svc.showNFTImage) // So much repetition but same service
 	r.GET("/:id/media", svc.showNFTMedia)
 }
 

@@ -1,18 +1,22 @@
 package main
 
 import (
+	"log"
+
 	services "github.com/alphabatem/nft-proxy/service"
 	"github.com/babilu-online/common/context"
 	"github.com/joho/godotenv"
-	"log"
 )
 
-func main() {
-
+func LoadEnvironment() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+}
+
+func main() {
+	LoadEnvironment()
 
 	ctx, err := context.NewCtx(
 		&services.SqliteService{},

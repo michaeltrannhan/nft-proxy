@@ -4,16 +4,16 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	nft_proxy "github.com/alphabatem/nft-proxy"
-	"github.com/babilu-online/common/context"
-	"github.com/gagliardetto/solana-go"
-	"github.com/gin-gonic/gin"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
+	"github.com/babilu-online/common/context"
+	"github.com/gagliardetto/solana-go"
+	"github.com/gin-gonic/gin"
 )
 
 type ImageService struct {
@@ -32,6 +32,8 @@ type ImageService struct {
 
 const IMG_SVC = "img_svc"
 
+const DefaultImageSize = 720 // ✅ Define a constant
+
 func (svc ImageService) Id() string {
 	return IMG_SVC
 }
@@ -43,7 +45,7 @@ func (svc *ImageService) Start() error {
 
 	svc.httpMedia = &http.Client{Timeout: 10 * time.Second}
 
-	svc.defaultSize = 720 //Gifs will be half the size
+	svc.defaultSize = DefaultImageSize //Gifs will be half the size
 
 	svc.exemptImages = map[string]struct{}{
 		"2kMpEJCZL8vEDZe7YPLMCS9Y3WKSAMedXBn7xHPvsWvi": {},
@@ -142,73 +144,137 @@ func (svc *ImageService) writeFile(c *gin.Context, path string, media *nft_proxy
 	return nil
 }
 
+// func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName string) error {
+// 	if media.ImageUri == "" {
+// 		return errors.New("invalid image")
+// 	}
+
+// 	var err error
+// 	var data []byte
+// 	if strings.Contains(media.ImageUri, nft_proxy.BASE64_PREFIX) {
+// 		base64String := media.ImageUri
+// 		// Remove the data:image/jpeg;base64, prefix if present
+// 		if v := strings.Index(base64String, nft_proxy.BASE64_PREFIX); v > -1 {
+// 			base64String = base64String[v+len(nft_proxy.BASE64_PREFIX):]
+// 		}
+
+// 		data, err = base64.StdEncoding.DecodeString(base64String)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	} else {
+// 		media.ImageUri = strings.Replace(strings.TrimSpace(media.ImageUri), ".ipfs.nftstorage.link", ".ipfs.w3s.link", 1)
+
+// 		log.Println("Fetching", media.ImageUri)
+
+// 		req, err := http.NewRequest("GET", media.ImageUri, nil)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
+// 		req.Header.Set("Accept", "*/*")
+// 		req.Header.Set("Accept-Encoding", "gzip,deflate,br")
+
+// 		resp, err := svc.httpMedia.Do(req)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		defer resp.Body.Close()
+
+// 		if resp.StatusCode != 200 {
+// 			return errors.New(resp.Status)
+// 		}
+
+// 		data, err = io.ReadAll(resp.Body)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	if len(data) == 0 {
+// 		return errors.New("failed to download image")
+// 	}
+
+// 	output, err := os.Create(cacheName)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer output.Close()
+
+// 	//log.Printf("Resizing file: %s", cacheName)
+// 	err = svc.resize.Resize(data, output, svc.defaultSize)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
 func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName string) error {
 	if media.ImageUri == "" {
-		return errors.New("invalid image")
+		return errors.New("invalid image URI")
 	}
 
-	var err error
-	var data []byte
-	if strings.Contains(media.ImageUri, nft_proxy.BASE64_PREFIX) {
-		base64String := media.ImageUri
-		// Remove the data:image/jpeg;base64, prefix if present
-		if v := strings.Index(base64String, nft_proxy.BASE64_PREFIX); v > -1 {
-			base64String = base64String[v+len(nft_proxy.BASE64_PREFIX):]
-		}
-
-		data, err = base64.StdEncoding.DecodeString(base64String)
-		if err != nil {
-			return err
-		}
-	} else {
-		media.ImageUri = strings.Replace(strings.TrimSpace(media.ImageUri), ".ipfs.nftstorage.link", ".ipfs.w3s.link", 1)
-
-		log.Println("Fetching", media.ImageUri)
-
-		req, err := http.NewRequest("GET", media.ImageUri, nil)
-		if err != nil {
-			return err
-		}
-
-		req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
-		req.Header.Set("Accept", "*/*")
-		req.Header.Set("Accept-Encoding", "gzip,deflate,br")
-
-		resp, err := svc.httpMedia.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			return errors.New(resp.Status)
-		}
-
-		data, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
+	// Fetch image data
+	data, err := svc.fetchImageData(media.ImageUri)
+	if err != nil {
+		return fmt.Errorf("failed to fetch image data: %w", err)
 	}
 
-	if len(data) == 0 {
-		return errors.New("failed to download image")
+	// Save the image to cache
+	if err := svc.saveImageToCache(data, cacheName); err != nil {
+		return fmt.Errorf("failed to save image to cache: %w", err)
 	}
 
-	output, err := os.Create(cacheName)
+	return nil
+}
+
+func (svc *ImageService) fetchImageData(uri string) ([]byte, error) {
+	if strings.Contains(uri, nft_proxy.BASE64_PREFIX) {
+		return svc.decodeBase64Image(uri)
+	}
+	return svc.fetchImageFromURL(uri)
+}
+
+func (svc *ImageService) decodeBase64Image(base64String string) ([]byte, error) {
+	if v := strings.Index(base64String, nft_proxy.BASE64_PREFIX); v > -1 {
+		base64String = base64String[v+len(nft_proxy.BASE64_PREFIX):]
+	}
+	return base64.StdEncoding.DecodeString(base64String)
+}
+
+func (svc *ImageService) fetchImageFromURL(uri string) ([]byte, error) {
+	uri = strings.Replace(strings.TrimSpace(uri), ".ipfs.nftstorage.link", ".ipfs.w3s.link", 1)
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "PostmanRuntime/7.29.2")
+	resp, err := svc.httpMedia.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(resp.Status)
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+func (svc *ImageService) saveImageToCache(data []byte, path string) error {
+	output, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer output.Close()
 
-	//log.Printf("Resizing file: %s", cacheName)
-	err = svc.resize.Resize(data, output, svc.defaultSize)
-	if err != nil {
-		return err
-	}
-	return nil
+	return svc.resize.Resize(data, output, svc.defaultSize)
 }
 
-func (svc *ImageService) MediaFile(c *gin.Context, key string) error {
+func (svc *ImageService) mediaFile(c *gin.Context, key string) error {
 	var media *nft_proxy.Media
 	var err error
 	if svc.IsSolKey(key) {
